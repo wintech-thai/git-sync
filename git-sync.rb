@@ -238,6 +238,8 @@ def sync_one(mapping)
   # ------------------------
   # 6. commit (ถ้ามี diff)
   # ------------------------
+  run_cmd("git config user.email 'git-sync@local'", work_dir)
+  run_cmd("git config user.name 'git-sync-bot'", work_dir)
   run_cmd("git add .", work_dir)
 
   stdout, _, _ = Open3.capture3("git status --porcelain", chdir: work_dir)
