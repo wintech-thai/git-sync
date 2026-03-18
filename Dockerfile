@@ -2,6 +2,9 @@ FROM ruby:3.3-alpine
 
 # ติดตาม build-base กรณีที่ gem บางตัวต้อง compile native extensions
 RUN apk add --no-cache build-base iproute2 \
+    git \
+    openssh-client \
+    ca-certificates \
     && gem install sinatra rackup puma --no-document
 
 WORKDIR /app
