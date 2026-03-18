@@ -1,0 +1,112 @@
+name: git-sync
+permissions:
+  contents: read
+  actions: read
+
+on:
+  push:
+    branches: [ develop, main ]
+    tags: ['v*.*.*']
+
+env:
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+jobs:
+  build1:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ "git-sync" ]
+    outputs:
+      imageTag: ${{ steps.prep.outputs.version }}
+      autoDeployEnv: ${{ steps.prep.outputs.deployEnv }}
+      autoDeployBranch: ${{ steps.prep.outputs.autoDeployBranch }}
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Prepare
+      id: prep
+      run: |
+        DOCKER_IMAGE=onix-api/${{matrix.service}}
+        GCR_IMAGE=asia-southeast1-docker.pkg.dev/its-artifact-commons/utils/${{matrix.service}}
+        VERSION=latest
+        GIT_HASH=$(git rev-parse --short "$GITHUB_SHA")
+        ENV=dev
+        DEPLOYMENT_BRANCH=development
+        SERVICE=${{matrix.service}}
+
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+          ENV=prod
+          DEPLOYMENT_BRANCH=production
+        elif [[ $GITHUB_REF == refs/heads/* ]]; then
+          BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed -r 's#/+#-#g')
+          VERSION=$BRANCH-$GIT_HASH
+        fi
+
+        TAGS="${DOCKER_IMAGE}:${VERSION}"
+        GCR_TAGS="${GCR_IMAGE}:${VERSION}"
+
+        if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+          MINOR=${VERSION%.*}
+          MAJOR=${MINOR%.*}
+          TAGS="$TAGS,${DOCKER_IMAGE}:${MINOR},${DOCKER_IMAGE}:${MAJOR},${DOCKER_IMAGE}:latest"
+        elif [ "${{ github.event_name }}" = "push" ]; then
+          TAGS="$TAGS,${DOCKER_IMAGE}:sha-${GITHUB_SHA::8}"
+        fi
+
+        DOCKERFILE=Dockerfile
+
+        echo ::set-output name=tags::${TAGS}
+        echo ::set-output name=gcr_tags::${GCR_TAGS}
+        echo ::set-output name=version::${VERSION}
+        echo ::set-output name=deployEnv::${ENV}
+        echo ::set-output name=autoDeployBranch::${DEPLOYMENT_BRANCH}
+        echo ::set-output name=dockerFile::${DOCKERFILE}
+
+    - name: Slack notification start
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        fields: repo,message,commit,author,ref,workflow # selectable (default: repo,message)
+        text: "Start building [${{matrix.service}}] [${{ steps.prep.outputs.version }}]..."
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_URL }} # required
+
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v0'
+      with:
+        credentials_json: '${{ secrets.GCR_KEY }}'
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: GCR Authen
+      run: |
+        # Set up docker to authenticate
+        # via gcloud command-line tool.
+        gcloud auth configure-docker asia-southeast1-docker.pkg.dev
+
+    - name: Build and push images
+      uses: docker/build-push-action@v3
+      with:
+        file: ${{ steps.prep.outputs.dockerFile }}
+        push: true
+        load: false
+        tags: ${{ steps.prep.outputs.gcr_tags }}
+        build-args: version=0.0.1
+
+    - name: Slack notification end
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        fields: repo,message,commit,author,ref,workflow # selectable (default: repo,message)
+        text: "Done building [${{matrix.service}}] [${{ steps.prep.outputs.version }}] with status [${{job.status}}]"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_URL }} # required
