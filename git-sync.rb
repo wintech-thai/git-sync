@@ -107,7 +107,7 @@ def apply_replacements(dir, replacements, ignore_paths=[])
     if ignore_paths.any? { |p| file.include?(p) }
       next
     end
-
+puts("DEBUG1 ==> [#{file}]")
     content = File.read(file)
 
     replacements.each do |r|
