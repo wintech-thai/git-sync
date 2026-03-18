@@ -35,7 +35,7 @@ CONFIG = {
         "replacements" => [
           {
             "find" => /^(\s*)repoURL:\s+(.+)$/,
-            "replace" => "\\1repoURL: http://gitea-http.gitea.svc.cluster.local/data-plane.git",
+            "replace" => "\\1repoURL: http://gitea-http.gitea.svc.cluster.local/pp/local-repo.git",
             "regex" => true
           }
         ],
@@ -46,6 +46,48 @@ CONFIG = {
           ".git",
           "node_modules"
         ]
+      }
+    },
+
+    {
+      "source" => {
+        "repo" => "please-protect-control-plane",
+        "authentication" => false,
+        "ref" => {
+          "type" => "branch",
+          "value" => "development"
+        }
+      },
+      "destination" => {
+        "repo" => "please-protect-local",
+        "branch" => "development",
+        "authentication" => true,
+      },
+      "transform" => {
+        "replacements" => [],
+        "exclude_files" => [ "values-local.yaml" ],
+        "ignore_paths" => [ ".git", "node_modules" ]
+      }
+    },
+
+    {
+      "source" => {
+        "repo" => "please-protect-control-plane",
+        "authentication" => false,
+        "ref" => {
+          "type" => "branch",
+          "value" => "production"
+        }
+      },
+      "destination" => {
+        "repo" => "please-protect-local",
+        "branch" => "production",
+        "authentication" => true,
+      },
+      "transform" => {
+        "replacements" => [],
+        "exclude_files" => [ "values-local.yaml" ],
+        "ignore_paths" => [ ".git", "node_modules" ]
       }
     }
   ]
