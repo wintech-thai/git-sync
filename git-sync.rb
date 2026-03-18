@@ -20,7 +20,7 @@ CONFIG = {
     {
       "source" => {
         "repo" => "please-protect-data-plane",
-        "authentication": false,
+        "authentication" => false,
         "ref" => {
           "type" => "branch",
           "value" => "main"
@@ -29,7 +29,7 @@ CONFIG = {
       "destination" => {
         "repo" => "please-protect-local",
         "branch" => "main",
-        "authentication": true,
+        "authentication" => true,
       },
       "transform" => {
         "replacements" => [
