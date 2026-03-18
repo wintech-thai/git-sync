@@ -4,6 +4,8 @@ require 'json'
 require 'open3'
 require 'fileutils'
 require 'securerandom'
+require 'net/http'
+require 'uri'
 
 if File.exist?('env.rb')
   require './env'
@@ -98,6 +100,93 @@ raise "Missing env" unless SOURCE_TEMPLATE && DEST_TEMPLATE
 # ------------------------
 # utils
 # ------------------------
+
+def gitea_enabled?
+  ENV['GIT_PROVIDER'] == 'gitea'
+end
+
+def gitea_request(method, path, body=nil)
+  uri = URI("#{ENV['GITEA_BASE_URL']}#{path}")
+
+  req =
+    case method
+    when :get  then Net::HTTP::Get.new(uri)
+    when :post then Net::HTTP::Post.new(uri)
+    else raise "unsupported method"
+    end
+
+  req.basic_auth(ENV['GITEA_USERNAME'], ENV['GITEA_PASSWORD'])
+  req['Content-Type'] = 'application/json'
+  req.body = body.to_json if body
+
+  res = Net::HTTP.start(uri.hostname, uri.port) do |http|
+    http.request(req)
+  end
+
+  res
+end
+
+# cache กันยิงซ้ำ
+@gitea_org_cache  = {}
+@gitea_repo_cache = {}
+
+def split_repo(full)
+  parts = full.split("/")
+  raise "Invalid repo format (org/repo): #{full}" unless parts.size == 2
+  parts
+end
+
+def ensure_org_exists(org)
+  return unless gitea_enabled?
+  return if @gitea_org_cache[org]
+
+  res = gitea_request(:get, "/api/v1/orgs/#{org}")
+
+  if res.code.to_i == 200
+    @gitea_org_cache[org] = true
+    return
+  end
+
+  puts "Creating org: #{org}"
+
+  res = gitea_request(:post, "/api/v1/orgs", {
+    username: org,
+    full_name: org
+  })
+
+  unless res.code.to_i == 201
+    raise "Failed to create org #{org}: #{res.body}"
+  end
+
+  @gitea_org_cache[org] = true
+end
+
+def ensure_repo_exists(org, repo)
+  return unless gitea_enabled?
+  key = "#{org}/#{repo}"
+  return if @gitea_repo_cache[key]
+
+  res = gitea_request(:get, "/api/v1/repos/#{org}/#{repo}")
+
+  if res.code.to_i == 200
+    @gitea_repo_cache[key] = true
+    return
+  end
+
+  puts "Creating repo: #{org}/#{repo}"
+
+  res = gitea_request(:post, "/api/v1/org/#{org}/repos", {
+    name: repo,
+    private: false
+  })
+
+  unless res.code.to_i == 201
+    raise "Failed to create repo #{org}/#{repo}: #{res.body}"
+  end
+
+  @gitea_repo_cache[key] = true
+end
+
 def resolve_env(value)
   return value unless value.is_a?(String)
 
@@ -217,6 +306,15 @@ def sync_one(mapping)
   dest_url   = build_url(DEST_TEMPLATE, dst_repo, use_auth: dest_auth, token: dest_token)
 
   puts "=== Sync #{src_repo} -> #{dst_repo} ==="
+
+  # ------------------------
+  # ensure destination exists (Gitea)
+  # ------------------------
+  if gitea_enabled?
+    org, repo = split_repo(dst_repo)
+    ensure_org_exists(org)
+    ensure_repo_exists(org, repo)
+  end
 
   # ------------------------
   # 1. clone destination (BASE)
