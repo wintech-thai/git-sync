@@ -97,7 +97,7 @@ end
 def preserve_files(tmp_dir, dest_url, branch, files)
   return if files.nil? || files.empty?
 
-  dest_tmp = "/tmp/git-dest-#{SecureRandom.hex(4)}"
+  dest_tmp = "/tmp/git-preserved-#{SecureRandom.hex(4)}"
   FileUtils.rm_rf(dest_tmp)
 
   puts "== preserve from dest =="
@@ -151,10 +151,12 @@ end
 # ------------------------
 # core sync
 # ------------------------
-
 def sync_one(mapping)
-  tmp = "/tmp/git-sync-#{SecureRandom.hex(4)}"
-  FileUtils.rm_rf(tmp)
+  work_dir = "/tmp/git-sync-#{SecureRandom.hex(4)}"
+  src_tmp  = "/tmp/git-src-#{SecureRandom.hex(4)}"
+
+  FileUtils.rm_rf(work_dir)
+  FileUtils.rm_rf(src_tmp)
 
   src_repo = mapping["source"]["repo"]
   dst_repo = mapping["destination"]["repo"]
@@ -169,56 +171,88 @@ def sync_one(mapping)
   source_token = ENV['GIT_SOURCE_TOKEN']
   dest_token   = ENV['GIT_DEST_TOKEN']
 
-  source_url = build_url(
-    SOURCE_TEMPLATE,
-    src_repo,
-    use_auth: source_auth,
-    token: source_token
-  )
-
-  dest_url = build_url(
-    DEST_TEMPLATE,
-    dst_repo,
-    use_auth: dest_auth,
-    token: dest_token
-  )
+  source_url = build_url(SOURCE_TEMPLATE, src_repo, use_auth: source_auth, token: source_token)
+  dest_url   = build_url(DEST_TEMPLATE, dst_repo, use_auth: dest_auth, token: dest_token)
 
   puts "=== Sync #{src_repo} -> #{dst_repo} ==="
 
-  # clone source
-  run_cmd("git clone --depth 1 #{source_url} #{tmp}")
+  # ------------------------
+  # 1. clone destination (BASE)
+  # ------------------------
+  run_cmd("git clone #{dest_url} #{work_dir}")
 
-  # checkout
+  # ensure branch
+  run_cmd("git checkout #{dst_branch} || git checkout -b #{dst_branch}", work_dir)
+
+  # ------------------------
+  # 2. clone source
+  # ------------------------
+  run_cmd("git clone --depth 1 #{source_url} #{src_tmp}")
+
   if ref_type == "branch"
-    run_cmd("git checkout #{ref_val}", tmp)
+    run_cmd("git checkout #{ref_val}", src_tmp)
   elsif ref_type == "tag"
-    run_cmd("git checkout tags/#{ref_val}", tmp)
-  else
-    raise "Unknown ref type"
+    run_cmd("git checkout tags/#{ref_val}", src_tmp)
   end
 
   transform = mapping["transform"] || {}
 
-  # preserve files from dest BEFORE replace
+  # ------------------------
+  # 3. copy source → destination
+  # ------------------------
+  puts "== merging source into destination =="
+
+  Dir.glob("#{src_tmp}/**/*", File::FNM_DOTMATCH).each do |path|
+    next if path.include?(".git")
+
+    rel = path.sub("#{src_tmp}/", "")
+    dst = File.join(work_dir, rel)
+
+    if File.directory?(path)
+      FileUtils.mkdir_p(dst)
+    else
+      FileUtils.mkdir_p(File.dirname(dst))
+      FileUtils.cp(path, dst)
+    end
+  end
+
+  # ------------------------
+  # 4. preserve files (override กลับ)
+  # ------------------------
   preserve_files(
-    tmp,
+    work_dir,
     dest_url,
     dst_branch,
     transform["exclude_files"]
   )
 
-  # apply replacements
+  # ------------------------
+  # 5. apply replacements
+  # ------------------------
   apply_replacements(
-    tmp,
+    work_dir,
     transform["replacements"],
     transform["ignore_paths"] || [".git"]
   )
 
-  # push
-  run_cmd("git remote add dest #{dest_url}", tmp)
-  run_cmd("git push dest HEAD:refs/heads/#{dst_branch} --force", tmp)
+  # ------------------------
+  # 6. commit (ถ้ามี diff)
+  # ------------------------
+  run_cmd("git add .", work_dir)
 
-  #FileUtils.rm_rf(tmp)
+  stdout, _, _ = Open3.capture3("git status --porcelain", chdir: work_dir)
+
+  if stdout.strip != ""
+    run_cmd("git commit -m 'sync from #{src_repo}'", work_dir)
+  else
+    puts "Nothing to commit, skip push"
+    return
+  end
+
+  # ------------------------
+  # 7. push กลับ destination
+  # ------------------------
+  run_cmd("git push origin #{dst_branch}", work_dir)
 end
 
 def sync_all
