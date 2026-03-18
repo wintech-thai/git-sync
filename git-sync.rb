@@ -55,7 +55,7 @@ RAW_CONFIG = {
         "authentication" => false,
         "ref" => {
           "type" => "$GIT_SOURCE_REF_TYPE2",
-          "value" => "GIT_SOURCE_REF_NAME2"
+          "value" => "$GIT_SOURCE_REF_NAME2"
         }
       },
       "destination" => {
