@@ -120,9 +120,6 @@ def resolve_config(obj)
   end
 end
 
-CONFIG = resolve_config(RAW_CONFIG)
-
-
 def run_cmd(cmd, dir='/tmp')
   puts ">> #{cmd}"
   stdout, stderr, status = Open3.capture3(cmd, chdir: dir)
@@ -311,6 +308,7 @@ end
 # ------------------------
 # modes
 # ------------------------
+CONFIG = resolve_config(RAW_CONFIG)
 
 if MODE == "once"
   sync_all
