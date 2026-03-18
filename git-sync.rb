@@ -63,6 +63,7 @@ def run_cmd(cmd, dir='/tmp')
   puts ">> #{cmd}"
   stdout, stderr, status = Open3.capture3(cmd, chdir: dir)
   puts stdout
+  puts stderr
   unless status.success?
     puts stderr
     raise "Command failed: #{cmd}"
