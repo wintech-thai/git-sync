@@ -57,7 +57,7 @@ raise "Missing env" unless SOURCE_TEMPLATE && DEST_TEMPLATE
 # utils
 # ------------------------
 
-def run_cmd(cmd, dir=nil)
+def run_cmd(cmd, dir='/tmp')
   puts ">> #{cmd}"
   stdout, stderr, status = Open3.capture3(cmd, chdir: dir)
   puts stdout
@@ -88,7 +88,7 @@ def preserve_files(tmp_dir, dest_url, branch, files)
   FileUtils.rm_rf(dest_tmp)
 
   puts "== preserve from dest =="
-  run_cmd("git clone --depth 1 --branch #{branch} #{dest_url} #{dest_tmp}", "/tmp")
+  run_cmd("git clone --depth 1 --branch #{branch} #{dest_url} #{dest_tmp}")
 
   files.each do |f|
     src = File.join(dest_tmp, f)
@@ -156,7 +156,7 @@ def sync_one(mapping)
   puts "=== Sync #{src_repo} -> #{dst_repo} ==="
 
   # clone source
-  run_cmd("git clone --depth 1 #{source_url} #{tmp}", "/tmp")
+  run_cmd("git clone --depth 1 #{source_url} #{tmp}")
 
   # checkout
   if ref_type == "branch"
