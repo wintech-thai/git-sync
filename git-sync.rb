@@ -71,7 +71,6 @@ def run_cmd(cmd, dir='/tmp')
 end
 
 def build_url(template, repo, use_auth: false, token: nil)
-puts("DEBUG ==> [#{template}] [#{repo}] [#{use_auth}] [#{token}]")
   url = template.gsub("{repo}", repo)
 
   return url unless use_auth && token
@@ -166,7 +165,7 @@ def sync_one(mapping)
 
   source_auth = mapping["source"]["authentication"]
   dest_auth   = mapping["destination"]["authentication"]
-puts("DEBUG0 ==> [#{source_auth}] [#{dest_auth}]")
+
   source_token = ENV['GIT_SOURCE_TOKEN']
   dest_token   = ENV['GIT_DEST_TOKEN']
 
@@ -219,7 +218,7 @@ puts("DEBUG0 ==> [#{source_auth}] [#{dest_auth}]")
   run_cmd("git remote add dest #{dest_url}", tmp)
   run_cmd("git push dest HEAD:refs/heads/#{dst_branch} --force", tmp)
 
-  FileUtils.rm_rf(tmp)
+  #FileUtils.rm_rf(tmp)
 end
 
 def sync_all
