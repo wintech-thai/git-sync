@@ -15,27 +15,27 @@ MODE = ENV['MODE'] || 'once'
 SOURCE_TEMPLATE = ENV['GIT_SOURCE_TEMPLATE']
 DEST_TEMPLATE   = ENV['GIT_DEST_TEMPLATE']
 
-CONFIG = {
+RAW_CONFIG = {
   "mappings" => [
     {
       "source" => {
-        "repo" => "please-protect-data-plane",
+        "repo" => "$GIT_SOURCE_REPO1",
         "authentication" => false,
         "ref" => {
-          "type" => "branch",
-          "value" => "main"
+          "type" => "$GIT_SOURCE_REF_TYPE1",
+          "value" => "$GIT_SOURCE_REF_NAME1"
         }
       },
       "destination" => {
-        "repo" => "please-protect-local",
-        "branch" => "main",
+        "repo" => "$GIT_DEST_REPO1",
+        "branch" => "$GIT_DEST_REF_NAME1",
         "authentication" => true,
       },
       "transform" => {
         "replacements" => [
           {
             "find" => /^(\s*)repoURL:\s+(.+)$/,
-            "replace" => "\\1repoURL: http://gitea-http.gitea.svc.cluster.local/pp/local-repo.git",
+            "replace" => "\\1repoURL: http://gitea-http.gitea.svc.cluster.local:3000/local/data-plane.git",
             "regex" => true
           }
         ],
@@ -51,16 +51,16 @@ CONFIG = {
 
     {
       "source" => {
-        "repo" => "please-protect-control-plane",
+        "repo" => "$GIT_SOURCE_REPO2",
         "authentication" => false,
         "ref" => {
-          "type" => "branch",
-          "value" => "development"
+          "type" => "$GIT_SOURCE_REF_TYPE2",
+          "value" => "GIT_SOURCE_REF_NAME2"
         }
       },
       "destination" => {
-        "repo" => "please-protect-local",
-        "branch" => "development",
+        "repo" => "$GIT_DEST_REPO2",
+        "branch" => "$GIT_DEST_REF_NAME2",
         "authentication" => true,
       },
       "transform" => {
@@ -72,16 +72,16 @@ CONFIG = {
 
     {
       "source" => {
-        "repo" => "please-protect-control-plane",
+        "repo" => "$GIT_SOURCE_REPO3",
         "authentication" => false,
         "ref" => {
-          "type" => "branch",
-          "value" => "production"
+          "type" => "$GIT_SOURCE_REF_TYPE3",
+          "value" => "$GIT_SOURCE_REF_NAME3"
         }
       },
       "destination" => {
-        "repo" => "please-protect-local",
-        "branch" => "production",
+        "repo" => "$GIT_DEST_REPO3",
+        "branch" => "$GIT_DEST_REF_NAME3",
         "authentication" => true,
       },
       "transform" => {
@@ -95,11 +95,33 @@ CONFIG = {
 
 raise "Missing env" unless SOURCE_TEMPLATE && DEST_TEMPLATE
 
-
-
 # ------------------------
 # utils
 # ------------------------
+def resolve_env(value)
+  return value unless value.is_a?(String)
+
+  value.gsub(/\$([A-Z0-9_]+)/) do
+    env_key = $1
+    ENV[env_key] || raise("Missing ENV: #{env_key}")
+  end
+end
+
+def resolve_config(obj)
+  case obj
+    when Hash
+      obj.transform_values { |v| resolve_config(v) }
+    when Array
+      obj.map { |v| resolve_config(v) }
+    when String
+      resolve_env(obj)
+    else
+      obj
+  end
+end
+
+CONFIG = resolve_config(RAW_CONFIG)
+
 
 def run_cmd(cmd, dir='/tmp')
   puts ">> #{cmd}"
