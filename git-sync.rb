@@ -228,6 +228,8 @@ def build_url(template, repo, use_auth: false, token: nil)
   # inject token for https only
   if url.start_with?("https://")
     url.sub("https://", "https://#{token}@")
+  elsif url.start_with?("http://")
+    url.sub("http://", "http://#{token}@")
   else
     # SSH → ไม่ต้องทำอะไร
     url
