@@ -94,28 +94,6 @@ end
 # transform
 # ------------------------
 
-def preserve_files(tmp_dir, dest_url, branch, files)
-  return if files.nil? || files.empty?
-
-  dest_tmp = "/tmp/git-preserved-#{SecureRandom.hex(4)}"
-  FileUtils.rm_rf(dest_tmp)
-
-  puts "== preserve from dest =="
-  run_cmd("git clone --branch #{branch} #{dest_url} #{dest_tmp}")
-
-  files.each do |f|
-    src = File.join(dest_tmp, f)
-    dst = File.join(tmp_dir, f)
-
-    if File.exist?(src)
-      FileUtils.mkdir_p(File.dirname(dst))
-      FileUtils.cp(src, dst)
-      puts "Preserved #{f}"
-    end
-  end
-
-  #FileUtils.rm_rf(dest_tmp)
-end
 
 def apply_replacements(dir, replacements, ignore_paths=[])
   return if replacements.nil? || replacements.empty?
@@ -202,6 +180,8 @@ def sync_one(mapping)
   # ------------------------
   puts "== merging source into destination =="
 
+  exclude_files = transform["exclude_files"] || []
+
   Dir.glob("#{src_tmp}/**/*", File::FNM_DOTMATCH).each do |path|
     next if path.include?(".git")
 
@@ -212,19 +192,17 @@ def sync_one(mapping)
       FileUtils.mkdir_p(dst)
     else
       FileUtils.mkdir_p(File.dirname(dst))
+
+      # 🔥 logic สำคัญ
+      if exclude_files.include?(File.basename(rel)) && File.exist?(dst)
+        puts "Preserve existing file: #{rel}"
+        next
+      end
+
       FileUtils.cp(path, dst)
+      puts "Copied: #{rel}"
     end
   end
-
-  # ------------------------
-  # 4. preserve files (override กลับ)
-  # ------------------------
-  preserve_files(
-    work_dir,
-    dest_url,
-    dst_branch,
-    transform["exclude_files"]
-  )
 
   # ------------------------
   # 5. apply replacements
