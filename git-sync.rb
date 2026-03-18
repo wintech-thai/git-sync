@@ -94,7 +94,6 @@ end
 # transform
 # ------------------------
 
-
 def apply_replacements(dir, replacements, ignore_paths=[])
   return if replacements.nil? || replacements.empty?
 
@@ -107,22 +106,26 @@ def apply_replacements(dir, replacements, ignore_paths=[])
     if ignore_paths.any? { |p| file.include?(p) }
       next
     end
-puts("DEBUG1 ==> [#{file}]")
-    content = File.read(file)
+
+    original_content = File.read(file)
+    content = original_content.dup
 
     replacements.each do |r|
       find = r["find"]
       replace = r["replace"]
 
-      # support regex
       if r["regex"]
-        content = content.gsub(Regexp.new(find), replace)
+        content = content.gsub(find, replace)
       else
         content = content.gsub(find, replace)
       end
     end
 
-    File.write(file, content)
+    # 🔥 check ว่ามีการเปลี่ยนจริงมั้ย
+    if content != original_content
+      puts "Replaced in: #{file}"
+      File.write(file, content)
+    end
   end
 end
 
