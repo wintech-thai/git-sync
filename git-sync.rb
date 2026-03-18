@@ -165,7 +165,7 @@ def sync_one(mapping)
 
   source_auth = mapping["source"]["authentication"]
   dest_auth   = mapping["destination"]["authentication"]
-
+puts("DEBUG0 ==> [#{source_auth}] [#{dest_auth}]")
   source_token = ENV['GIT_SOURCE_TOKEN']
   dest_token   = ENV['GIT_DEST_TOKEN']
 
