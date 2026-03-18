@@ -114,7 +114,7 @@ def preserve_files(tmp_dir, dest_url, branch, files)
     end
   end
 
-  FileUtils.rm_rf(dest_tmp)
+  #FileUtils.rm_rf(dest_tmp)
 end
 
 def apply_replacements(dir, replacements, ignore_paths=[])
