@@ -210,7 +210,7 @@ def sync_one(mapping)
   # ------------------------
   # 2. clone source
   # ------------------------
-  run_cmd("git clone --depth 1 #{source_url} #{src_tmp}")
+  run_cmd("git clone #{source_url} #{src_tmp}")
 
   if ref_type == "branch"
     run_cmd("git checkout #{ref_val}", src_tmp)
