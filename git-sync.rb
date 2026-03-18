@@ -34,8 +34,8 @@ CONFIG = {
       "transform" => {
         "replacements" => [
           {
-            "find" => /^repoURL:\s+(.+)$/,
-            "replace" => "repoURL: http://gitea-http.gitea.svc.cluster.local/data-plane.git",
+            "find" => /^(\s*)repoURL:\s+(.+)$/,
+            "replace" => "\\1repoURL: http://gitea-http.gitea.svc.cluster.local/data-plane.git",
             "regex" => true
           }
         ],
