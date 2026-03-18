@@ -70,6 +70,7 @@ def run_cmd(cmd, dir='/tmp')
 end
 
 def build_url(template, repo, use_auth: false, token: nil)
+puts("DEBUG ==> [#{template}] [#{repo}] [#{use_auth}] [#{token}]")
   url = template.gsub("{repo}", repo)
 
   return url unless use_auth && token
