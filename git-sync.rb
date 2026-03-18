@@ -20,6 +20,7 @@ CONFIG = {
     {
       "source" => {
         "repo" => "please-protect-data-plane",
+        "authentication": false,
         "ref" => {
           "type" => "branch",
           "value" => "main"
@@ -27,7 +28,8 @@ CONFIG = {
       },
       "destination" => {
         "repo" => "please-protect-local",
-        "branch" => "main"
+        "branch" => "main",
+        "authentication": true,
       },
       "transform" => {
         "replacements" => [
@@ -67,8 +69,18 @@ def run_cmd(cmd, dir='/tmp')
   end
 end
 
-def build_url(template, repo)
-  template.gsub("{repo}", repo)
+def build_url(template, repo, use_auth: false, token: nil)
+  url = template.gsub("{repo}", repo)
+
+  return url unless use_auth && token
+
+  # inject token for https only
+  if url.start_with?("https://")
+    url.sub("https://", "https://#{token}@")
+  else
+    # SSH → ไม่ต้องทำอะไร
+    url
+  end
 end
 
 def text_file?(path)
@@ -150,8 +162,25 @@ def sync_one(mapping)
   ref_val  = mapping["source"]["ref"]["value"]
   dst_branch = mapping["destination"]["branch"]
 
-  source_url = build_url(SOURCE_TEMPLATE, src_repo)
-  dest_url   = build_url(DEST_TEMPLATE, dst_repo)
+  source_auth = mapping["source"]["authentication"]
+  dest_auth   = mapping["destination"]["authentication"]
+
+  source_token = ENV['GIT_SOURCE_TOKEN']
+  dest_token   = ENV['GIT_DESTINATION_TOKEN']
+
+  source_url = build_url(
+    SOURCE_TEMPLATE,
+    src_repo,
+    use_auth: source_auth,
+    token: source_token
+  )
+
+  dest_url = build_url(
+    DEST_TEMPLATE,
+    dst_repo,
+    use_auth: dest_auth,
+    token: dest_token
+  )
 
   puts "=== Sync #{src_repo} -> #{dst_repo} ==="
 
