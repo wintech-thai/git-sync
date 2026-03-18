@@ -5,6 +5,7 @@ RUN apk add --no-cache build-base iproute2 \
     git \
     openssh-client \
     ca-certificates \
+    curl \
     && gem install sinatra rackup puma --no-document
 
 WORKDIR /app
