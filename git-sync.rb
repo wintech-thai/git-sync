@@ -14,7 +14,7 @@ $stdout.sync = true
 MODE = ENV['MODE'] || 'once'
 SOURCE_TEMPLATE = ENV['GIT_SOURCE_TEMPLATE']
 DEST_TEMPLATE   = ENV['GIT_DEST_TEMPLATE']
-CONFIG_JSON ='{
+CONFIG_JSON = '{
   "mappings": [
     {
       "source": {
