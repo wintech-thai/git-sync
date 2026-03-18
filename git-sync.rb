@@ -101,7 +101,7 @@ def preserve_files(tmp_dir, dest_url, branch, files)
   FileUtils.rm_rf(dest_tmp)
 
   puts "== preserve from dest =="
-  run_cmd("git clone --depth 1 --branch #{branch} #{dest_url} #{dest_tmp}")
+  run_cmd("git clone --branch #{branch} #{dest_url} #{dest_tmp}")
 
   files.each do |f|
     src = File.join(dest_tmp, f)
