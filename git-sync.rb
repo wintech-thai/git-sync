@@ -14,41 +14,44 @@ $stdout.sync = true
 MODE = ENV['MODE'] || 'once'
 SOURCE_TEMPLATE = ENV['GIT_SOURCE_TEMPLATE']
 DEST_TEMPLATE   = ENV['GIT_DEST_TEMPLATE']
-CONFIG_JSON = '{
-  "mappings": [
+
+CONFIG = {
+  "mappings" => [
     {
-      "source": {
-        "repo": "please-protect-data-plane",
-        "ref": { "type": "branch", "value": "main" }
+      "source" => {
+        "repo" => "please-protect-data-plane",
+        "ref" => {
+          "type" => "branch",
+          "value" => "main"
+        }
       },
-      "destination": {
-        "repo": "please-protect-local",
-        "branch": "main"
+      "destination" => {
+        "repo" => "please-protect-local",
+        "branch" => "main"
       },
-      "transform": {
-        "replacements": [
+      "transform" => {
+        "replacements" => [
           {
-            "find": "repoURL:\\s+(.+)",
-            "replace": "repoURL: http://gitea-http.gitea.svc.cluster.local/data-plane.git",
-            "regex": true
+            "find" => /^repoURL:\s+(.+)$/,
+            "replace" => "repoURL: http://gitea-http.gitea.svc.cluster.local/data-plane.git",
+            "regex" => true
           }
         ],
-        "exclude_files": [
+        "exclude_files" => [
           "values-local.yaml"
         ],
-        "ignore_paths": [
+        "ignore_paths" => [
           ".git",
           "node_modules"
         ]
       }
     }
-
   ]
-}'
+}
 
-raise "Missing env" unless SOURCE_TEMPLATE && DEST_TEMPLATE && CONFIG_JSON
+raise "Missing env" unless SOURCE_TEMPLATE && DEST_TEMPLATE
 
-CONFIG = JSON.parse(CONFIG_JSON)
+
 
 # ------------------------
 # utils
